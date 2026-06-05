@@ -26,18 +26,22 @@ else
     git clone --recursive https://github.com/autc04/Retro68.git "$RETRO68_DIR"
 fi
 
-# Patch the Retro68 CMakeLists for Boost 1.90+ compatibility. `boost_system`
-# became header-only in Boost 1.90, which broke the find_package() calls in
-# four host-tool subdirs. We carry the fix in scripts/patches/.
-BOOST_PATCH="$PROJECT_ROOT/scripts/patches/retro68-boost-system.patch"
-if [ -f "$BOOST_PATCH" ]; then
-    if git -C "$RETRO68_DIR" apply --reverse --check "$BOOST_PATCH" >/dev/null 2>&1; then
-        echo "==> Boost system patch already applied — skipping"
-    else
-        echo "==> Applying Boost 1.90+ system patch to Retro68 source"
-        git -C "$RETRO68_DIR" apply "$BOOST_PATCH"
-    fi
-fi
+# Boost 1.90 removed the standalone boost_system library: `system` is now
+# header-only, with no boost_system CMake package and no Boost::system target.
+# Retro68's host tools still list `system` as a Boost component and link
+# Boost::system, so their find_package(Boost ...) calls fail against Boost
+# 1.90+. Strip those references from the host-tool CMakeLists so they resolve.
+# This rewrites whatever Boost lines are present rather than applying a fixed
+# diff, so it tolerates upstream rewording, and it's idempotent — re-running
+# leaves already-stripped files unchanged.
+echo "==> Stripping obsolete Boost 'system' references (Boost 1.90+ compatibility)"
+grep -rl --include=CMakeLists.txt -e 'find_package(Boost' -e 'Boost::system' "$RETRO68_DIR" \
+    | while IFS= read -r cmakelists; do
+        perl -i -pe '
+            s/\s+system\b//g        if /find_package\s*\(\s*Boost\b/;
+            s/\s+Boost::system\b//g if /\btarget_link_libraries\b/;
+        ' "$cmakelists"
+    done
 
 # Build output dir (empty placeholder — populated by the toolchain build later)
 mkdir -p "$RETRO68_HOME/Retro68-build"
