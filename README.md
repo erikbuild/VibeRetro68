@@ -91,6 +91,22 @@ configures `build/` against the toolchain on its way out. If you ever
 delete `build/`, just re-run `make build-retro68` and it'll
 reconfigure (the toolchain build itself is already cached).
 
+
+### BasiliskII Networking
+
+![BasiliskII slirp network setup](docs/basilisk_network.png)
+
+#### First-time network setup
+
+BasiliskII uses SLiRP for networking. On the first launch, open the MacTCP control panel and configure it with the SLiRP defaults:
+
+Open the MacTCP Control Panel, select Ethernet, type in 10.0.2.15 to the IP address, and click "More".
+- **Class**: A
+- **Obtain Address**: Manually
+- **IP Address**: 10.0.2.15
+- **Gateway**: 10.0.2.2
+- **DNS**: 10.0.2.3 (set domain to `local`), default
+- **Subnet Mask**: 255.255.255.0
 ### Edit → Build → Run
 
 Pick the emulator that fits the moment:
