@@ -22,28 +22,7 @@ This repo is a template. If you're starting your own project, download a zip ins
    git commit -m "Initial commit from VibeRetro68 template"
    ```
 
-## What's Here
-
-```
-src/                    Your project source (C/C++) — create as needed
-resources/              Rez resource definitions (.r files) — create as needed
-Brewfile                Homebrew prerequisites (cmake, boost, flex, …)
-Makefile                Task runner — shortcuts for the scripts/ commands
-docs/
-  RETRO68_SETUP.md      Toolchain installation and configuration
-  EMULATOR_SETUP.md     Basilisk II and Mini vMac setup
-  WORKFLOW.md           Iterative dev workflow with Claude Code
-scripts/
-  setup.sh              One-shot: fetch-deps → build-retro68 → doctor
-  fetch-deps.sh         Download Retro68 source, emulators, ROMs into deps/
-  build-retro68.sh      Build the Retro68 cross-compiler (~30-60 min, one-time)
-  doctor.sh             Diagnose missing or misconfigured pieces of deps/
-  run-basiliskii.sh     Build, copy .bin to Basilisk II shared folder, launch the emulator
-  run-minivmac.sh       Build and (re)launch Mini vMac with the resulting .dsk
-deps/                   Retro68 toolchain + emulators (gitignored — see deps/*/README.md)
-```
-
-Put your source files under `src/`.
+3. Rename the project. Anywhere `MyApp` appears (CMakeLists.txt's `project()`, the resource file basename, the About window's app-name string, etc.), substitute your own name.
 
 ## Quick Start
 
@@ -59,37 +38,14 @@ That runs the four sub-steps in order:
 |------|--------------|
 | 1. `brew bundle` | Install the Homebrew formulae listed in [Brewfile](Brewfile) (cmake, boost, flex, etc.) |
 | 2. `make fetch-deps` | Clone Retro68, download emulator binaries, ROMs, and the System 7.5.3 disk image into `deps/` |
-| 3. `make build-retro68` | Build the Retro68 toolchain (~30-60 min, one-time) and configure the project's `build/` against it |
+| 3. `make build-retro68` | Build the Retro68 toolchain (~30-60 min, one-time) |
 | 4. `make doctor` | Verify every piece is in place; exits non-zero on any failure |
 
-Homebrew itself is required up front — `make setup` errors out with
-install instructions if `brew` isn't on `PATH`.
+Homebrew itself is required up front — `make setup` errors out with install instructions if `brew` isn't on `PATH`.
 
-Every target is idempotent, so `make setup` is safe to re-run after a
-partial install or a `git pull` that adds new deps. You can also invoke
-any sub-target directly if you only need that step.
+Every target is idempotent, so `make setup` is safe to re-run after a partial install or a `git pull` that adds new deps.
 
-The `deps/` directory is gitignored — every clone builds its own
-toolchain. See [deps/retro68/README.md](deps/retro68/README.md) for layout.
-
-### Start a New Project
-
-Create a `CMakeLists.txt` at the project root:
-
-```cmake
-cmake_minimum_required(VERSION 3.9)
-project(MyApp C)
-
-add_application(MyApp
-    src/main.c
-    resources/MyApp.r
-)
-```
-
-No separate CMake-configure step needed — `make build-retro68`
-configures `build/` against the toolchain on its way out. If you ever
-delete `build/`, just re-run `make build-retro68` and it'll
-reconfigure (the toolchain build itself is already cached).
+The `deps/` directory is gitignored — every clone builds its own toolchain. See [deps/retro68/README.md](deps/retro68/README.md) for layout.
 
 
 ### BasiliskII Networking
@@ -109,36 +65,46 @@ Open the MacTCP Control Panel, select Ethernet, type in 10.0.2.15 to the IP addr
 - **Subnet Mask**: 255.255.255.0
 ### Edit → Build → Run
 
-Pick the emulator that fits the moment:
-
 ```bash
-make basiliskii    # System 7.5.3 / Quadra 950 — interactive testing
-make minivmac      # Mac SE FDHD — fast, minimal, drag-disk workflow
+make build         # Configure (first time) + compile
+make basiliskii    # Build + launch in Basilisk II (System 7.5.3 / Quadra 950)
+make minivmac      # Build + launch in Mini vMac (System 6.0.8 / Mac SE FDHD)
 ```
 
-Run `make` with no arguments to see every available target.
+`make build` auto-configures `build/` against the Retro68 toolchain on its first run, then compiles. After that, warm builds skip straight to compilation.
 
-Each target does `cmake --build build/` first, then hands off to the emulator:
+The emulator targets depend on `build`, so a cold `make minivmac` from a fresh clone does the full configure → compile → launch chain in one command.
 
-- **`make basiliskii`** drops the freshly-built `.bin` into
-  `deps/basiliskii/shared/` and launches Basilisk II if it isn't already
-  running. Basilisk II's shared folder is `extfs`-synced live, so a
-  running emulator picks up the new `.bin` automatically — no restart
-  needed when iterating.
-- **`make minivmac`** kills any running Mini vMac, then relaunches it
-  with the fresh `MyApp.dsk` (or whatever `.dsk` your build produced).
-  The kill-first ordering matters: Mini vMac mmaps the disk image, and
-  overwriting it under a live emulator corrupts the resource fork.
+- **Basilisk II** uses `extfs` (live-synced shared folder), so a running emulator picks up new `.bin`s automatically — no restart needed while iterating.
+- **Mini vMac** mmaps its disk image, so the launcher kills any running instance before relaunching with the freshly-built `.dsk`.
 
-To pick a specific app when you have multiple outputs, invoke the
-underlying script directly: `scripts/run-basiliskii.sh MyApp` or
-`scripts/run-minivmac.sh MyApp`.
+To target a specific app when you have multiple outputs, invoke the script directly: `scripts/run-basiliskii.sh MyApp` or `scripts/run-minivmac.sh MyApp`.
 
 ### Testing on Real Hardware
 
 Mount `build/` over AFP on the classic Mac to easily run the compiled application.
 
 The [TashTalk USB](https://www.tindie.com/products/feralfirmware/tashtalk-usb/) device and [GUI interface](https://github.com/FeralFirmware/TailTalk/releases) are recommended.
+
+For physical media transfer, the post-build chain produces `build/MyApp.img` (Disk Copy 4.2 format) and `build/MyApp.hqx` (BinHex 4.0, text-safe for email).
+
+## Versioning
+
+Bump `/VERSION` (one line, `MAJOR.MINOR.PATCH`, each component a single digit) and rebuild — both the Finder's "Get Info" version line and the in-app About window follow automatically.
+
+## Post-Build Artifacts
+
+A successful `make build` produces five files in `build/`:
+
+| File | Purpose |
+|---|---|
+| `MyApp` | Renamed `.APPL` data fork, tagged via `SetFile` so Basilisk II's ExtFS exposes it as a proper app |
+| `MyApp.bin` | MacBinary container (any transport channel) |
+| `MyApp.dsk` | Raw HFS disk image (Mini vMac, Basilisk II direct mount) |
+| `MyApp.img` | Disk Copy 4.2 wrapped (real-hardware mounters: Disk Copy, MountImage, ShrinkWrap) |
+| `MyApp.hqx` | BinHex 4.0 — text-safe; survives email, web, or any transport that strips type/creator |
+
+`.hqx` requires `binhex` and `macbinary` on the build host; if either is missing, the step is silently skipped. The `SetFile` steps are skipped on Linux build hosts.
 
 ## Toolchain
 

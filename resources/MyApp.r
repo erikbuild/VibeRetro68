@@ -2,6 +2,9 @@
 #include "Menus.r"
 #include "Processes.r"
 
+/* 'vers' resource generated from /VERSION by CMake's configure_file. */
+#include "version.r"
+
 resource 'WIND' (128, "Hello") {
     { 60, 60, 220, 380 },
     documentProc,
@@ -9,6 +12,18 @@ resource 'WIND' (128, "Hello") {
     goAway,
     0x0,
     "Hello, world!",
+    centerMainScreen
+};
+
+/* About window. dBoxProc = plain bordered modal-style window with no
+   title bar or close box; we dismiss it on any click or keystroke. */
+resource 'WIND' (129, "About") {
+    { 90, 80, 200, 380 },
+    dBoxProc,
+    invisible,
+    noGoAway,
+    0x0,
+    "",
     centerMainScreen
 };
 
